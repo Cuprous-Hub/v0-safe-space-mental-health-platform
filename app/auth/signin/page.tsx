@@ -1,84 +1,83 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import Link from "next/link"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function SignInPage() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleSignIn = async () => {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
     setLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    window.location.href = "/dashboard"
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Login failed")
+        return
+      }
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(data.user))
+      router.push("/dashboard")
+    } catch {
+      setError("Could not reach the server. It may be waking up, so try again in a minute.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <Card className="w-full max-w-md p-8 border border-border/40">
-      <h2 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h2>
-      <p className="text-muted-foreground mb-6">Sign in to your SafeSpace account</p>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md p-8">
+        <h1 className="text-2xl font-bold mb-1">Welcome back</h1>
+        <p className="text-sm text-muted-foreground mb-6">Sign in to SafeSpace</p>
 
-      <div className="space-y-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"
-            placeholder="your@email.com"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-input border border-border/40"
+            required
           />
-        </div>
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
+          </Button>
+        </form>
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-foreground">Password</label>
-            <Link href="#" className="text-xs text-primary hover:text-primary/80">
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-input border border-border/40 pr-10"
-            />
-            <button
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <Button onClick={handleSignIn} disabled={loading} className="w-full bg-primary hover:bg-primary/90 mb-4">
-        {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-        Sign In
-      </Button>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
-        <Link href="/auth/signup" className="text-primary hover:text-primary/80">
-          Sign Up
-        </Link>
-      </p>
-
-      <div className="border-t border-border/40 mt-6 pt-6">
-        <p className="text-xs text-center text-muted-foreground mb-4">
-          Crisis? Call <span className="font-semibold">911</span> or text <span className="font-semibold">988</span>
+        <p className="text-sm text-center text-muted-foreground mt-6">
+          Demo accounts only.{" "}
+          <Link href="/" className="underline">Back home</Link>
         </p>
-      </div>
-    </Card>
+
+        <div className="border-t mt-6 pt-6">
+          <p className="text-xs text-center text-muted-foreground">
+            Crisis? Call <span className="font-semibold">911</span> or text{" "}
+            <span className="font-semibold">988</span>
+          </p>
+        </div>
+      </Card>
+    </div>
   )
 }
